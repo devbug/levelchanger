@@ -5,7 +5,7 @@
  *  
  *  
  *  levelchanger
- *  Copyright (C) 2010  deVbug (devbug@devbug.me)
+ *  Copyright (C) 2010-2020  deVbug (devbug@devbug.me)
  *  
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -101,11 +101,11 @@ BOOL SetChange(LPCTSTR lpszPath);
 
 // h264 raw, mkv, avi container signs
 static uFileSign signs[] =  { { 0, 0, 0, 1 }, { 0x1A, 0x45, 0xDF, 0xA3 }, { 0x52, 0x49, 0x46, 0x46 } };
-// baseline, main profile, extended profile, high profile
-static uProfile profiles[] = { { 0x42, 0xE0 }, { 0x4D, 0x40 }, { 0x58, 0xA0 }, { 0x64, 0x00 } };
+// baseline(42C0), baseline(42E0), main profile, extended profile, high profile
+static uProfile profiles[] = { { 0x42, 0xC0 } , { 0x42, 0xE0 }, { 0x4D, 0x40 }, { 0x58, 0xA0 }, { 0x64, 0x00 } };
+static LPCTSTR profile_names[] = { _T("Baseline(42C0) Profile"), _T("Baseline(42E0) Profile"), _T("Main Profile"), _T("Extended Profile"), _T("High Profile") };
 // levels
-#define NO_OF_LVL		15
-static TCHAR *pchlevels[] = { _T("5.1"), _T("5.0"), _T("4.2"), _T("4.1"), _T("4.0"),
+static LPCTSTR pchlevels[] = { _T("5.1"), _T("5.0"), _T("4.2"), _T("4.1"), _T("4.0"),
 						_T("3.2"), _T("3.1"), _T("3.0"), _T("2.2"), _T("2.1"),
 						_T("2.0"), _T("1.3"), _T("1.2"), _T("1.1"), _T("1.0") };
 static int dlevels[] = { 51, 50, 42, 41, 40, 32, 31, 30, 22, 21, 20, 13, 12, 11, 10 };
@@ -122,21 +122,18 @@ INT_PTR CALLBACK DlgProg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 	ZeroMemory(szPath, MAX_BUFFER+1);
 
-	switch (message)
-	{
+	switch (message) {
 		case WM_INITDIALOG:
 			hWndMain = hDlg;
 
 			DragAcceptFiles(hWndMain, TRUE);
 
-			SetDlgItemText(hDlg, IDC_STO, _T("\r\nH.264 / x264 / AVC 데이터의 프로파일, 레벨 값을 바꿉니다.\r\nmp4 컨테이너 혹은 H.264 RAW 데이터만 바꿀 수 있습니다.\r\n\r\nby deVbug ( http://devbug.me )"));
+			SetDlgItemText(hDlg, IDC_STO, _T("\r\nH.264 / x264 / AVC 데이터의 프로파일, 레벨 값을 바꿉니다.\r\nmp4 컨테이너 혹은 H.264 RAW 데이터만 바꿀 수 있습니다.\r\n\r\nby deVbug ( http://blog.devbug.me )"));
 
-			ComboBox_AddString(GetDlgItem(hDlg, IDC_CMBPROFILE), _T("Baseline Profile"));
-			ComboBox_AddString(GetDlgItem(hDlg, IDC_CMBPROFILE), _T("Main Profile"));
-			ComboBox_AddString(GetDlgItem(hDlg, IDC_CMBPROFILE), _T("Extended Profile"));
-			ComboBox_AddString(GetDlgItem(hDlg, IDC_CMBPROFILE), _T("High Profile"));
+			for (i=0;i<_countof(profile_names);i++)
+				ComboBox_AddString(GetDlgItem(hDlg, IDC_CMBPROFILE), profile_names[i]);
 			
-			for (i=0;i<NO_OF_LVL;i++)
+			for (i=0;i<_countof(pchlevels);i++)
 				ComboBox_AddString(GetDlgItem(hDlg, IDC_CMBLEVEL), pchlevels[i]);
 
 			SetDlgItemText(hDlg, IDC_STPROFILE, _T(""));
@@ -152,13 +149,13 @@ INT_PTR CALLBACK DlgProg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			return (INT_PTR)TRUE;
 
 		case WM_COMMAND:
-			switch(LOWORD(wParam)){
+			switch (LOWORD(wParam)) {
 				case IDCANCEL:
 					EndDialog(hDlg, LOWORD(wParam));
 					return (INT_PTR)TRUE;
 
 				case IDC_BTBROWSE:
-					if(FALSE == GetFileName(GetDlgItem(hDlg, IDC_EDPATH), TEXT("MP4 File\0*.mp4\0H.264 RAW File\0*.h264\0All Files\0*.*\0\0"),
+					if (FALSE == GetFileName(GetDlgItem(hDlg, IDC_EDPATH), TEXT("MP4 File\0*.mp4\0H.264 RAW File\0*.h264\0All Files\0*.*\0\0"),
 								OFN_FILEMUSTEXIST | OFN_EXPLORER))
 						break;
 					Edit_SetSel(GetDlgItem(hDlg, IDC_EDPATH), MAXLONG, MAXLONG);
@@ -183,7 +180,7 @@ INT_PTR CALLBACK DlgProg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 			// 먼저 갯수를 구한다. ( 2번 파라미터 -1 = 갯수)
 			i = DragQueryFile(hDrop, -1, 0, 0);
-			if(i == 1) {
+			if (i == 1) {
 				DragQueryFile( hDrop, 0, szPath , MAX_BUFFER );
 				
 				SetDlgItemText(hDlg, IDC_EDPATH, szPath);
@@ -223,7 +220,7 @@ BOOL LoadInfo(LPCTSTR lpszPath)
 	offset = 0;
 
 	_tfopen_s(&fp, lpszPath, _T("rb"));
-	if(fp == NULL) return FALSE;
+	if (fp == NULL) return FALSE;
 
 	fread(&filesign, sizeof(stFileSign), 1, fp);
 
@@ -234,7 +231,7 @@ BOOL LoadInfo(LPCTSTR lpszPath)
 		SetDlgItemText(hWndMain, IDC_STINFO, _T("H.264 RAW File"));
 		ffiletype = IS_H264;
 		_tfopen_s(&fp, lpszPath, _T("rb"));
-		if(fp){
+		if (fp){
 			_fseeki64(fp, 4, 0);
 			fread(&info, sizeof(stH264Info), 1, fp);
 			fclose(fp);
@@ -271,32 +268,28 @@ BOOL LoadInfo(LPCTSTR lpszPath)
 	}
 
 	if (rtn) {
-		if (info.profile.shprofile == profiles[0].shprofile) {
-			SetDlgItemText(hWndMain, IDC_STPROFILE, _T("Baseline Profile"));
-			ComboBox_SetCurSel(GetDlgItem(hWndMain, IDC_CMBPROFILE), 0);
-		} else if (info.profile.shprofile == profiles[1].shprofile) {
-			SetDlgItemText(hWndMain, IDC_STPROFILE, _T("Main Profile"));
-			ComboBox_SetCurSel(GetDlgItem(hWndMain, IDC_CMBPROFILE), 1);
-		} else if (info.profile.shprofile == profiles[2].shprofile) {
-			SetDlgItemText(hWndMain, IDC_STPROFILE, _T("Extended Profile"));
-			ComboBox_SetCurSel(GetDlgItem(hWndMain, IDC_CMBPROFILE), 2);
-		} else if (info.profile.shprofile == profiles[3].shprofile) {
-			SetDlgItemText(hWndMain, IDC_STPROFILE, _T("High Profile"));
-			ComboBox_SetCurSel(GetDlgItem(hWndMain, IDC_CMBPROFILE), 3);
-		} else {
-			SetDlgItemText(hWndMain, IDC_STPROFILE, _T("Unknown Profile"));
-			ComboBox_SetCurSel(GetDlgItem(hWndMain, IDC_CMBPROFILE), -1);
+		SetDlgItemText(hWndMain, IDC_STPROFILE, _T("Unknown Profile"));
+		ComboBox_SetCurSel(GetDlgItem(hWndMain, IDC_CMBPROFILE), -1);
+
+		for (int i=0;i<_countof(profiles);i++) {
+			if (info.profile.shprofile == profiles[i].shprofile) {
+				SetDlgItemText(hWndMain, IDC_STPROFILE, profile_names[i]);
+				ComboBox_SetCurSel(GetDlgItem(hWndMain, IDC_CMBPROFILE), i);
+				break;
+			}
 		}
 
 		ZeroMemory(temp, 1000);
 		_stprintf_s(temp, 1000, _T("%.1f"), info.level/10.0);
 		
-		int ind = 0;
-		for(ind=0;ind<NO_OF_LVL;ind++)
-			if(dlevels[ind] == info.level) break;
-		if(ind >= NO_OF_LVL) ind = -1;
+		ComboBox_SetCurSel(GetDlgItem(hWndMain, IDC_CMBLEVEL), -1);
 
-		ComboBox_SetCurSel(GetDlgItem(hWndMain, IDC_CMBLEVEL), ind);
+		for (int i=0;i<_countof(dlevels);i++) {
+			if (dlevels[i] == info.level) {
+				ComboBox_SetCurSel(GetDlgItem(hWndMain, IDC_CMBLEVEL), i);
+				break;
+			}
+		}
 
 		SetDlgItemText(hWndMain, IDC_STLEVEL, temp);
 
@@ -361,7 +354,7 @@ BOOL isLittleEndian()
 
 	test.ints = 1;
 
-	if(test.bytes.byte1 == 1) return TRUE;
+	if (test.bytes.byte1 == 1) return TRUE;
 
 	return FALSE;
 }
@@ -397,52 +390,53 @@ BOOL LoadMP4(LPCTSTR lpszPath)
 	BYTE *buf = NULL;
 
 	_tfopen_s(&fp, lpszPath, _T("rb"));
-	if(fp == NULL) return FALSE;
+	if (fp == NULL) return FALSE;
 
-	while(1) {
+	while (1) {
 		readsize = fread(&box, sizeof(stMP4BOX), 1, fp);
 		
-		if(readsize == 0) break;
+		if (readsize == 0) break;
 
-		if(isLittleEndian()){
+		if (isLittleEndian()){
 			makeLE(&box);
 		}
 
-		if(!isMP4 && box.type.ints == MP4TYPESIGN) isMP4 = TRUE;
-		if(box.type.ints == MP4METASIGN) {
-			if(buf) free(buf);
+		if (!isMP4 && box.type.ints == MP4TYPESIGN) isMP4 = TRUE;
+		if (box.type.ints == MP4METASIGN) {
+			if (buf) free(buf);
 			buf = (BYTE *)malloc(box.size.ints);
 			_fseeki64(fp, off, 0);
 			fread(buf, box.size.ints, 1, fp);
 
-			int i, j, flag;
-			for(i=0;i<box.size.ints;i++){
-				flag = 1;
-				for(j=0;j<4;j++){
-					if(MP4AVCSIGN[j] != buf[i+j]){
-						flag = 0;
+			size_t i, j;
+			BOOL flag = FALSE;
+			for (i=0;i<box.size.ints;i++){
+				flag = TRUE;
+				for (j=0;j<4;j++){
+					if (MP4AVCSIGN[j] != buf[i+j]){
+						flag = FALSE;
 						break;
 					}
 				}
 
 				i += j;
 
-				if(flag) break;
+				if (flag) break;
 			}
 
-			if(flag) {
+			if (flag) {
 				memcpy(&info, buf+i, sizeof(stH264Info));
 				offset = off + i;
 			}
 
-			if(buf) free(buf);
-			if(!flag){
+			if (buf) free(buf);
+			if (!flag){
 				isH264 = FALSE;
 				break;
 			}
 		} else {
 			// largesize
-			if(box.size.ints == 1) {
+			if (box.size.ints == 1) {
 				off += box.largesize.ints;
 			}
 			// 끝까지, 즉 마지막 박스
@@ -458,8 +452,8 @@ BOOL LoadMP4(LPCTSTR lpszPath)
 
 	fclose(fp);
 
-	if(!isMP4) return FALSE;
-	if(!isH264) return FALSE;
+	if (!isMP4) return FALSE;
+	if (!isH264) return FALSE;
 
 	return TRUE;
 }
@@ -486,14 +480,14 @@ BOOL SetChange(LPCTSTR lpszPath)
 		}
 	}
 
-	if(dProfile != -1)
+	if (dProfile != -1)
 		info.profile.shprofile = profiles[dProfile].shprofile;
 	
-	if(dLevel > 0 && dLevel < NO_OF_LVL)
+	if (dLevel > 0 && dLevel < _countof(dlevels))
 		info.level = dlevels[dLevel];
 
 	_tfopen_s(&fp, lpszPath, _T("r+b"));
-	if(fp == NULL) return FALSE;
+	if (fp == NULL) return FALSE;
 
 	_fseeki64(fp, offset, 0L);
 	fwrite(&info, sizeof(stH264Info), 1, fp);
@@ -539,21 +533,25 @@ BOOL GetFileName(HWND hPathCtrl, TCHAR lpszFilter[], DWORD dwFlags)
 BOOL Is64OSVersion()
 {
 	BOOL bResult = FALSE;
-	OSVERSIONINFO stOSVersionInfo;
+	OSVERSIONINFOEX osvi;
+	DWORDLONG dwlConditionMask = 0;
 	SYSTEM_INFO si;
 
-	stOSVersionInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-	GetVersionEx( &stOSVersionInfo );
+	ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+	osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+	osvi.dwMajorVersion = 5;
+	osvi.dwMinorVersion = 2;
+	// ref: https://en.wikipedia.org/wiki/List_of_Microsoft_Windows_versions
+
+	VER_SET_CONDITION(dwlConditionMask, VER_MAJORVERSION, VER_GREATER_EQUAL);
+	VER_SET_CONDITION(dwlConditionMask, VER_MINORVERSION, VER_GREATER_EQUAL);
+
 	GetNativeSystemInfo(&si);
 
-	if( ( 6 <= stOSVersionInfo.dwMajorVersion ) ||
-		( 5 == stOSVersionInfo.dwMajorVersion && 2 == stOSVersionInfo.dwMinorVersion ) )
-	{
+	if (VerifyVersionInfo(&osvi, VER_MAJORVERSION | VER_MINORVERSION, dwlConditionMask)) {
 		//64비트를 지원하는 CPU라도 32비트 운영체제가 설치되면 32비트 CPU라고 나옴
-		if ( PROCESSOR_ARCHITECTURE_IA64 == si.wProcessorArchitecture ) {
-			bResult = TRUE;
-		}
-		else if ( PROCESSOR_ARCHITECTURE_AMD64 == si.wProcessorArchitecture ) {
+		if (PROCESSOR_ARCHITECTURE_IA64 == si.wProcessorArchitecture
+			|| PROCESSOR_ARCHITECTURE_AMD64 == si.wProcessorArchitecture) {
 			bResult = TRUE;
 		}
 	}
@@ -566,7 +564,7 @@ void ErrorCatcher(LPCTSTR lpszFunction, BOOL bForce)
 	LPVOID lpMsgBuf;
 	DWORD dw = GetLastError();
 
-	if(!dw && !bForce)
+	if (!dw && !bForce)
 		return;
 
 	FormatMessage(
