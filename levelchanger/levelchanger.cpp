@@ -483,7 +483,7 @@ BOOL SetChange(LPCTSTR lpszPath)
 	if (dProfile != -1)
 		info.profile.shprofile = profiles[dProfile].shprofile;
 	
-	if (dLevel > 0 && dLevel < _countof(dlevels))
+	if (0 <= dLevel && dLevel < _countof(dlevels))
 		info.level = dlevels[dLevel];
 
 	_tfopen_s(&fp, lpszPath, _T("r+b"));
